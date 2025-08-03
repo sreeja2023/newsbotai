@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NewsChat AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 30%;
+      background-color: #f0f0f0;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid #ccc;
+    }
+    .main {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+    input, button {
+      font-size: 1em;
+      padding: 10px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .summary-box {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+    .history-item {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #ffffff;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.05);
+    }
+    .history-item strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+    h2 { margin-top: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar History -->
+  <div class="sidebar">
+    <h2>🕘 History</h2>
+    <div id="history"></div>
+  </div>
+
+  <!-- Main Chat Panel -->
+  <div class="main">
+    <h2>🧠 NewsChat AI</h2>
+    <p>Enter a news topic and get a smart summary.</p>
+
+    <input type="text" id="topic" placeholder="e.g. India election, AI policy" />
+    <button onclick="getSummary()">Get Summary</button>
+
+    <div id="result" class="summary-box"></div>
+
+    <!-- Follow-up section -->
+    <div style="margin-top:30px;">
+      <h3>💬 Ask a follow-up question</h3>
+      <input type="text" id="followup" placeholder="e.g. What are the risks?" />
+      <button onclick="askFollowUp()">Ask</button>
+      <div id="followup-result" class="summary-box"></div>
+    </div>
+  </div>
+
+  <!-- Script for UI logic -->
+  <script>
+    const historyList = [];
+
+    async function getSummary() {
+      const topic = document.getElementById('topic').value.trim();
+      const resDiv = document.getElementById('result');
+
+      if (!topic) {
+        resDiv.innerHTML = "❗ Please enter a topic.";
+        return;
+      }
+
+      resDiv.innerHTML = "⏳ Loading...";
+
+      try {
+        const response = await fetch('/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic })
+        });
+
+        const data = await response.json();
+        const summary = data.summary;
+
+        resDiv.innerHTML = `<strong>Summary:</strong><br>${formatSummary(summary)}`;
+
+        // Add to history
+        historyList.unshift({ topic, summary });
+        updateHistory(historyList);
+      } catch (err) {
+        resDiv.innerHTML = "❌ Error fetching summary.";
+      }
+    }
+
+    function updateHistory(historyArray) {
+      const historyDiv = document.getElementById('history');
+      historyDiv.innerHTML = '';
+
+      historyArray.forEach((item) => {
+        const div = document.createElement('div');
+        div.classList.add('history-item');
+        div.innerHTML = `<strong>${item.topic}</strong>${formatSummary(item.summary)}`;
+        historyDiv.appendChild(div);
+      });
+    }
+
+    async function askFollowUp() {
+      const followup = document.getElementById('followup').value.trim();
+      const summaryText = document.getElementById('result').innerText;
+      const output = document.getElementById('followup-result');
+
+      if (!followup || !summaryText) {
+        output.innerText = "❗ Please enter a question after getting a summary.";
+        return;
+      }
+
+      output.innerHTML = "⏳ Thinking...";
+
+      try {
+        const response = await fetch('/followup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            summary: summaryText,
+            question: followup
+          })
+        });
+
+        const data = await response.json();
+        output.innerHTML = `<strong>Answer:</strong><br>${data.answer}`;
+      } catch (err) {
+        output.innerHTML = "❌ Error generating answer.";
+      }
+    }
+
+    function formatSummary(summaryText) {
+      const bulletParts = summaryText.split(/(?=\s*-\s)/).map(s => s.trim()).filter(Boolean);
+      let html = "<ul>";
+
+      bulletParts.forEach(line => {
+        if (line.startsWith('-')) {
+          html += `<li>${line.slice(1).trim()}</li>`;
+        } else {
+          html += `<li>${line}</li>`;
+        }
+      });
+
+      html += "</ul>";
+      return html;
+    }
+  </script>
+</body>
+</html>
