@@ -102,7 +102,6 @@
 
         resDiv.innerHTML = `<strong>Summary:</strong><br>${formatSummary(summary)}`;
 
-        // Add to history
         historyList.unshift({ topic, summary });
         updateHistory(historyList);
       } catch (err) {
@@ -152,17 +151,16 @@
     }
 
     function formatSummary(summaryText) {
-      const bulletParts = summaryText.split(/(?=\s*-\s)/).map(s => s.trim()).filter(Boolean);
+      const bulletParts = summaryText
+        .split(/\n+/)
+        .map(s => s.trim())
+        .filter(line => line.length > 0);
+
       let html = "<ul>";
-
       bulletParts.forEach(line => {
-        if (line.startsWith('-')) {
-          html += `<li>${line.slice(1).trim()}</li>`;
-        } else {
-          html += `<li>${line}</li>`;
-        }
+        line = line.replace(/^[-•]\s*/, '');
+        html += `<li>${line}</li>`;
       });
-
       html += "</ul>";
       return html;
     }
